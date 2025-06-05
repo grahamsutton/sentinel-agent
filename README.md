@@ -1,0 +1,233 @@
+# Operion Sentinel Agent
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Release](https://img.shields.io/github/v/release/operion/sentinel-agent)](https://github.com/operion/sentinel-agent/releases)
+
+A lightweight, open-source monitoring agent for collecting system metrics and sending them to the Operion platform. Built in Rust for performance, reliability, and minimal resource usage.
+
+## Features
+
+- 🚀 **Lightweight**: Minimal resource footprint with Rust's zero-cost abstractions
+- 📊 **Disk Monitoring**: Comprehensive disk space usage tracking with filtering
+- 🔧 **YAML Configuration**: Flexible, human-readable configuration 
+- 📦 **Batched Collection**: Efficient metric batching and HTTP API delivery
+- 🛡️ **Secure**: No proprietary secrets, fully auditable open source
+- 🔄 **Auto-restart**: Systemd service with automatic restart on failure
+- 🎯 **DataDog-style**: Familiar configuration patterns for easy adoption
+
+## Quick Start
+
+### One-Line Installation
+
+```bash
+# Install latest version
+curl -fsSL https://raw.githubusercontent.com/operion/sentinel-agent/main/install.sh | bash
+
+# Install specific version
+curl -fsSL https://raw.githubusercontent.com/operion/sentinel-agent/main/install.sh | bash -s -- --version v1.0.0
+```
+
+### Manual Installation
+
+1. Download the binary for your platform from [releases](https://github.com/operion/sentinel-agent/releases)
+2. Create a configuration file (see [Configuration](#configuration))
+3. Run the agent: `./sentinel-agent --config /path/to/config.yaml`
+
+## Configuration
+
+The agent uses YAML configuration files. Here's a complete example:
+
+```yaml
+# Operion Sentinel Agent Configuration
+
+agent:
+  # Unique identifier for this agent/server
+  id: "web-server-01"
+  # Optional: Override hostname detection
+  hostname: "web01.example.com"
+
+api:
+  # REST API endpoint for metric ingestion
+  endpoint: "https://api.operion.com"
+  # Optional: Request timeout in seconds (default: 30)
+  timeout_seconds: 30
+
+collection:
+  # How often to collect metrics (seconds)
+  interval_seconds: 60
+  # How often to flush buffered metrics to API (seconds) 
+  flush_interval_seconds: 10
+  # Maximum metrics to buffer before dropping old ones
+  batch_size: 100
+  
+  # Disk monitoring configuration
+  disk:
+    enabled: true
+    # Optional: Only monitor these mount points (contains match)
+    include_mount_points:
+      - "/"
+      - "/home"
+    # Optional: Exclude these mount points (contains match)
+    exclude_mount_points:
+      - "/dev"
+      - "/proc"
+      - "/sys"
+      - "/run"
+      - "/tmp"
+```
+
+### System Installation
+
+For system-wide installation (when run as root):
+- Config: `/etc/operion/agent.yaml`
+- Binary: `/usr/local/bin/sentinel-agent`
+- Service: `systemctl status operion-agent`
+
+### User Installation
+
+For user installation (when run as regular user):
+- Config: `~/.config/operion/agent.yaml`
+- Binary: `~/.local/bin/sentinel-agent`
+
+## Usage
+
+### Command Line Options
+
+```bash
+# Use default config location
+sentinel-agent
+
+# Specify custom config file
+sentinel-agent --config /path/to/config.yaml
+
+# Show help
+sentinel-agent --help
+```
+
+### Systemd Service Management
+
+```bash
+# Start the service
+sudo systemctl start operion-agent
+
+# Enable auto-start on boot
+sudo systemctl enable operion-agent
+
+# Check status
+sudo systemctl status operion-agent
+
+# View logs
+sudo journalctl -u operion-agent -f
+```
+
+## Metrics Collected
+
+### Disk Metrics
+
+- **Device**: Disk device name
+- **Mount Point**: Filesystem mount point
+- **Total Space**: Total disk space in bytes
+- **Used Space**: Used disk space in bytes  
+- **Available Space**: Available disk space in bytes
+- **Usage Percentage**: Disk usage as percentage
+
+All metrics include timestamps and are sent to your configured API endpoint in JSON format.
+
+## Building from Source
+
+### Prerequisites
+
+- Rust 1.70 or later
+- Cargo package manager
+
+### Build Steps
+
+```bash
+# Clone the repository
+git clone https://github.com/operion/sentinel-agent.git
+cd sentinel-agent
+
+# Build release binary
+cargo build --release
+
+# Binary will be at target/release/sentinel-agent
+```
+
+### Cross-compilation
+
+The project supports cross-compilation for multiple platforms:
+
+```bash
+# Install target for ARM64 Linux
+rustup target add aarch64-unknown-linux-gnu
+
+# Cross-compile
+cargo build --target aarch64-unknown-linux-gnu --release
+```
+
+## API Integration
+
+The agent sends metrics via HTTP POST to `/v1/metrics` with the following JSON structure:
+
+```json
+{
+  "agent_id": "web-server-01",
+  "hostname": "web01.example.com", 
+  "timestamp": 1640995200,
+  "metrics": [
+    {
+      "timestamp": 1640995200,
+      "device": "/dev/sda1",
+      "mount_point": "/",
+      "total_space_bytes": 100000000000,
+      "used_space_bytes": 50000000000,
+      "available_space_bytes": 50000000000,
+      "usage_percentage": 50.0
+    }
+  ]
+}
+```
+
+## Security & Privacy
+
+- ✅ **Open Source**: Full source code available for audit
+- ✅ **No Secrets**: No proprietary code or hidden functionality
+- ✅ **Minimal Data**: Only collects essential system metrics
+- ✅ **Configurable**: Full control over what data is collected
+- ✅ **Transparent**: Clear API payload structure
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+### Development Setup
+
+```bash
+# Clone and setup
+git clone https://github.com/operion/sentinel-agent.git
+cd sentinel-agent
+
+# Run tests
+cargo test
+
+# Format code
+cargo fmt
+
+# Run linter
+cargo clippy
+```
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+
+## Support
+
+- 📖 **Documentation**: [docs.operion.com](https://docs.operion.com)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/operion/sentinel-agent/issues)
+- 💬 **Community**: [Discord](https://discord.gg/operion)
+- 📧 **Email**: support@operion.com
+
+---
+
+Made with ❤️ by the Operion team. Building transparent, trustworthy monitoring tools.
