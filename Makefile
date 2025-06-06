@@ -29,7 +29,7 @@ test: test-unit test-integration
 # Run unit tests
 test-unit:
 	@echo "🧪 Running unit tests..."
-	cargo test --lib
+	cargo test --bins
 
 # Run integration tests
 test-integration:
