@@ -46,8 +46,8 @@ docker-build:
 # Run integration tests using Docker Compose
 docker-test: docker-build
 	@echo "🐳 Running Docker-based integration tests..."
-	docker-compose -f docker-compose.integration.yml up --build --abort-on-container-exit
-	docker-compose -f docker-compose.integration.yml down --remove-orphans
+	docker compose -f docker-compose.integration.yml up --build --abort-on-container-exit
+	docker compose -f docker-compose.integration.yml down --remove-orphans
 
 # Generate test coverage
 coverage:
@@ -64,7 +64,7 @@ install: build
 clean:
 	@echo "🧹 Cleaning build artifacts..."
 	cargo clean
-	docker-compose -f docker-compose.integration.yml down --remove-orphans --volumes 2>/dev/null || true
+	docker compose -f docker-compose.integration.yml down --remove-orphans --volumes 2>/dev/null || true
 	docker rmi sentinel-mock-api sentinel-agent 2>/dev/null || true
 
 # Create a new release

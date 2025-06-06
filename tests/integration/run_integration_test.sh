@@ -11,17 +11,17 @@ docker build -f tests/integration/Dockerfile.agent-builder -t sentinel-agent .
 
 # Clean up any existing containers
 echo "🧹 Cleaning up existing containers..."
-docker-compose -f docker-compose.integration.yml down --remove-orphans 2>/dev/null || true
+docker compose -f docker-compose.integration.yml down --remove-orphans 2>/dev/null || true
 
 # Start the integration test environment
 echo "🏁 Starting integration test environment..."
-docker-compose -f docker-compose.integration.yml up -d
+docker compose -f docker-compose.integration.yml up -d
 
 # Wait for services to be healthy
 echo "⏳ Waiting for services to be ready..."
 timeout=60
 while [ $timeout -gt 0 ]; do
-    if docker-compose -f docker-compose.integration.yml ps | grep -q "healthy"; then
+    if docker compose -f docker-compose.integration.yml ps | grep -q "healthy"; then
         echo "✅ Services are healthy!"
         break
     fi
@@ -31,8 +31,8 @@ done
 
 if [ $timeout -le 0 ]; then
     echo "❌ Services failed to become healthy within timeout"
-    docker-compose -f docker-compose.integration.yml logs
-    docker-compose -f docker-compose.integration.yml down
+    docker compose -f docker-compose.integration.yml logs
+    docker compose -f docker-compose.integration.yml down
     exit 1
 fi
 
@@ -71,7 +71,7 @@ else
         echo "   Received: $TOTAL_BATCHES batches and $TOTAL_METRICS metrics"
         echo ""
         echo "🔍 Container logs:"
-        docker-compose -f docker-compose.integration.yml logs
+        docker compose -f docker-compose.integration.yml logs
         SUCCESS=false
     fi
 fi
@@ -79,7 +79,7 @@ fi
 # Cleanup
 echo ""
 echo "🧹 Cleaning up..."
-docker-compose -f docker-compose.integration.yml down --remove-orphans
+docker compose -f docker-compose.integration.yml down --remove-orphans
 
 if [ "$SUCCESS" = true ]; then
     echo "✅ Integration test completed successfully!"
