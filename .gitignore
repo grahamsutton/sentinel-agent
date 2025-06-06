@@ -21,3 +21,8 @@ Thumbs.db
 
 # Claude Code files
 .claude
+
+# Coverage reports
+coverage/
+tarpaulin-report.html
+*.profraw

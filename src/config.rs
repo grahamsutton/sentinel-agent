@@ -47,6 +47,14 @@ impl Config {
         Ok(config)
     }
 
+    pub fn load_from_str(contents: &str) -> Result<Self, ConfigError> {
+        let config: Config =
+            serde_yaml::from_str(contents).map_err(|e| ConfigError::Parse(e.to_string()))?;
+
+        config.validate()?;
+        Ok(config)
+    }
+
     fn validate(&self) -> Result<(), ConfigError> {
         if self.agent.id.is_empty() {
             return Err(ConfigError::Validation(
@@ -97,4 +105,60 @@ pub enum ConfigError {
     Parse(String),
     #[error("Config validation error: {0}")]
     Validation(String),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_valid_config_yaml() -> String {
+        r#"
+agent:
+  id: "test-agent"
+  hostname: "test-host"
+api:
+  endpoint: "https://api.example.com"
+  timeout_seconds: 30
+collection:
+  interval_seconds: 60
+  batch_size: 100
+  flush_interval_seconds: 10
+  disk:
+    enabled: true
+"#.to_string()
+    }
+
+    #[test]
+    fn test_load_valid_config_from_str() {
+        let yaml = create_valid_config_yaml();
+        let config = Config::load_from_str(&yaml).unwrap();
+        assert_eq!(config.agent.id, "test-agent");
+        assert_eq!(config.agent.hostname, Some("test-host".to_string()));
+        assert_eq!(config.api.endpoint, "https://api.example.com");
+    }
+
+    #[test]
+    fn test_config_validation_empty_agent_id() {
+        let yaml = r#"
+agent:
+  id: ""
+api:
+  endpoint: "https://api.example.com"
+collection:
+  interval_seconds: 60
+  disk:
+    enabled: true
+"#;
+        let result = Config::load_from_str(yaml);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_config_defaults() {
+        let yaml = create_valid_config_yaml();
+        let config = Config::load_from_str(&yaml).unwrap();
+        assert_eq!(config.get_api_timeout_seconds(), 30);
+        assert_eq!(config.get_batch_size(), 100);
+        assert_eq!(config.get_flush_interval_seconds(), 10);
+    }
 }

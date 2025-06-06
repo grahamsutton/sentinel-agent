@@ -167,3 +167,95 @@ pub enum MetricError {
     #[error("Failed to get system timestamp")]
     TimestampError,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_disk_config() -> DiskConfig {
+        DiskConfig {
+            enabled: true,
+            include_mount_points: None,
+            exclude_mount_points: None,
+        }
+    }
+
+    #[test]
+    fn test_disk_collector_enabled() {
+        let config = create_disk_config();
+        let collector = DiskCollector::new(config);
+        assert!(collector.is_enabled());
+    }
+
+    #[test]
+    fn test_disk_collector_disabled() {
+        let mut config = create_disk_config();
+        config.enabled = false;
+        let collector = DiskCollector::new(config);
+        assert!(!collector.is_enabled());
+    }
+
+    #[test]
+    fn test_mount_point_filtering_include() {
+        let mut config = create_disk_config();
+        config.include_mount_points = Some(vec!["/home".to_string()]);
+        let collector = DiskCollector::new(config);
+
+        assert!(!collector.should_include_mount_point("/"));
+        assert!(collector.should_include_mount_point("/home"));
+        assert!(!collector.should_include_mount_point("/dev/shm"));
+    }
+
+    #[test]
+    fn test_mount_point_filtering_exclude() {
+        let mut config = create_disk_config();
+        config.exclude_mount_points = Some(vec!["/dev".to_string(), "/proc".to_string()]);
+        let collector = DiskCollector::new(config);
+
+        assert!(collector.should_include_mount_point("/"));
+        assert!(collector.should_include_mount_point("/home"));
+        assert!(!collector.should_include_mount_point("/dev/shm"));
+        assert!(!collector.should_include_mount_point("/proc/fs"));
+    }
+
+    #[test]
+    fn test_metric_batch_creation() {
+        let metric = DiskMetric {
+            timestamp: 1234567890,
+            device: "/dev/sda1".to_string(),
+            mount_point: "/".to_string(),
+            total_space_bytes: 1000000,
+            used_space_bytes: 500000,
+            available_space_bytes: 500000,
+            usage_percentage: 50.0,
+        };
+
+        let config = Config::load_from_str(r#"
+agent:
+  id: "test-agent"
+api:
+  endpoint: "https://api.example.com"
+collection:
+  interval_seconds: 60
+  disk:
+    enabled: true
+"#).unwrap();
+
+        let service = MetricService::new(&config);
+        let batch = service.create_batch(vec![metric], "test-id", "test-host");
+
+        assert_eq!(batch.agent_id, "test-id");
+        assert_eq!(batch.hostname, "test-host");
+        assert_eq!(batch.metrics.len(), 1);
+    }
+
+    #[test]
+    fn test_collect_disabled() {
+        let mut config = create_disk_config();
+        config.enabled = false;
+        let collector = DiskCollector::new(config);
+
+        let result = collector.collect().unwrap();
+        assert!(result.is_empty());
+    }
+}

@@ -122,3 +122,60 @@ pub enum AgentError {
     #[error("Metric collection error: {0}")]
     MetricCollection(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+
+    fn create_test_config() -> Config {
+        Config::load_from_str(r#"
+agent:
+  id: "test-agent"
+api:
+  endpoint: "https://api.example.com"
+collection:
+  interval_seconds: 60
+  batch_size: 5
+  disk:
+    enabled: true
+"#).unwrap()
+    }
+
+    #[test]
+    fn test_agent_creation() {
+        let config = create_test_config();
+        let agent = SentinelAgent::new(config);
+        assert!(agent.is_ok());
+    }
+
+    #[test]
+    fn test_buffer_management() {
+        let config = create_test_config();
+        let mut agent = SentinelAgent::new(config).unwrap();
+
+        let metrics = vec![
+            DiskMetric {
+                timestamp: 1234567890,
+                device: "/dev/sda1".to_string(),
+                mount_point: "/".to_string(),
+                total_space_bytes: 1000000,
+                used_space_bytes: 500000,
+                available_space_bytes: 500000,
+                usage_percentage: 50.0,
+            };
+            10
+        ];
+
+        agent.add_to_buffer(metrics);
+        assert_eq!(agent.buffer.len(), 5);
+    }
+
+    #[tokio::test]
+    async fn test_flush_empty_buffer() {
+        let config = create_test_config();
+        let mut agent = SentinelAgent::new(config).unwrap();
+        let result = agent.flush_buffer().await;
+        assert!(result.is_ok());
+    }
+}
