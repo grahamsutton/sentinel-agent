@@ -35,7 +35,7 @@ jobs:
           ${{ runner.os }}-cargo-
     
     - name: Run unit tests
-      run: cargo test --lib
+      run: cargo test --bins
 
   integration-tests:
     name: Integration Tests
