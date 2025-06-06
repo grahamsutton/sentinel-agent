@@ -196,9 +196,13 @@ The agent sends metrics via HTTP POST to `/v1/metrics` with the following JSON s
 - ✅ **Configurable**: Full control over what data is collected
 - ✅ **Transparent**: Clear API payload structure
 
-## Contributing
+## Development & Testing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+### Prerequisites
+
+- Rust 1.70+
+- Docker and Docker Compose
+- make (optional, for convenience)
 
 ### Development Setup
 
@@ -207,15 +211,55 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 git clone https://github.com/operion/sentinel-agent.git
 cd sentinel-agent
 
-# Run tests
-cargo test
+# Build the agent
+make build
 
-# Format code
-cargo fmt
+# Run all tests (unit + integration)
+make test
 
-# Run linter
-cargo clippy
+# Unit tests only
+make test-unit
+
+# Integration tests with Docker
+make test-integration
+
+# Generate coverage report
+make coverage
 ```
+
+### Integration Testing
+
+The project includes comprehensive Docker-based integration tests that simulate real-world deployment:
+
+```bash
+# Run the full integration test suite
+./tests/integration/run_integration_test.sh
+```
+
+The integration test:
+- Builds the agent binary
+- Creates Docker images for agent and mock API server
+- Starts both services with docker-compose
+- Waits for metrics to be collected and sent
+- Validates metrics structure and content
+- Reports success/failure with detailed logs
+
+### CI/CD Pipeline
+
+GitHub Actions workflows provide:
+- **Unit Tests**: Run on every push/PR
+- **Integration Tests**: Full Docker-based testing
+- **Build Artifacts**: Release binaries for multiple platforms
+
+## Contributing
+
+We welcome contributions! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for your changes
+4. Ensure all tests pass: `make test`
+5. Submit a pull request
 
 ## License
 

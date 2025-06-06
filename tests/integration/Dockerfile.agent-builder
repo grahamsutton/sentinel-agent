@@ -1,0 +1,44 @@
+# Multi-stage build: First stage builds the Rust binary
+FROM rust:latest AS builder
+
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Build the release binary
+RUN cargo build --release
+
+# Second stage: Runtime container
+FROM ubuntu:22.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create sentinel user and directories
+RUN useradd -r -s /bin/false -d /opt/sentinel sentinel && \
+    mkdir -p /opt/sentinel/bin /opt/sentinel/config
+
+# Copy the binary from builder stage
+COPY --from=builder /app/target/release/sentinel-agent /opt/sentinel/bin/sentinel-agent
+COPY tests/integration/test-config.yaml /opt/sentinel/config/sentinel.yaml
+
+# Make binary executable and set permissions
+RUN chmod +x /opt/sentinel/bin/sentinel-agent && \
+    chown -R sentinel:sentinel /opt/sentinel
+
+# Health check - verify agent binary works
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
+    CMD /opt/sentinel/bin/sentinel-agent --help || exit 1
+
+# Switch to sentinel user
+USER sentinel
+
+# Set working directory
+WORKDIR /opt/sentinel
+
+# Run the agent
+CMD ["/opt/sentinel/bin/sentinel-agent", "--config", "/opt/sentinel/config/sentinel.yaml"]

@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mock-api:
+    build:
+      context: .
+      dockerfile: tests/integration/Dockerfile.mock-api
+    container_name: sentinel-mock-api
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - sentinel-test
+
+  sentinel-agent:
+    build:
+      context: .
+      dockerfile: tests/integration/Dockerfile.agent-builder
+    container_name: sentinel-agent-test
+    depends_on:
+      mock-api:
+        condition: service_healthy
+    environment:
+      - RUST_LOG=info
+    volumes:
+      # Mount a temp volume for disk metrics testing
+      - /tmp:/test-mount:ro
+    networks:
+      - sentinel-test
+
+networks:
+  sentinel-test:
+    driver: bridge

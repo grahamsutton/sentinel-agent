@@ -1,0 +1,22 @@
+agent:
+  id: "integration-test-agent"
+  hostname: "test-container"
+
+api:
+  endpoint: "http://mock-api:8080"
+  timeout_seconds: 10
+
+collection:
+  interval_seconds: 5  # Collect every 5 seconds for faster testing
+  batch_size: 50
+  flush_interval_seconds: 3  # Flush every 3 seconds for faster feedback
+  disk:
+    enabled: true
+    # Include only common mount points to avoid container-specific mounts
+    include_mount_points:
+      - "/"
+      - "/tmp"
+    exclude_mount_points:
+      - "/dev"
+      - "/proc"
+      - "/sys"
