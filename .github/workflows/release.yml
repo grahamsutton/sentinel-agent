@@ -160,7 +160,7 @@ jobs:
 
       - name: Set up QEMU for ARM64 emulation (Linux ARM64 only)
         if: matrix.qemu
-        uses: docker/setup-qemu-action@v4
+        uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
 
