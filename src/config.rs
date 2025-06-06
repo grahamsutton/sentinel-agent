@@ -47,6 +47,7 @@ impl Config {
         Ok(config)
     }
 
+    #[allow(dead_code)]
     pub fn load_from_str(contents: &str) -> Result<Self, ConfigError> {
         let config: Config =
             serde_yaml::from_str(contents).map_err(|e| ConfigError::Parse(e.to_string()))?;
