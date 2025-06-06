@@ -1,7 +1,7 @@
 # Sentinel Agent Makefile
 # Provides convenient commands for development and testing
 
-.PHONY: build test test-unit test-integration clean docker-build docker-test help
+.PHONY: build test test-unit test-integration clean docker-build docker-test release help
 
 # Default target
 help:
@@ -16,6 +16,7 @@ help:
 	@echo "clean              Clean build artifacts"
 	@echo "install            Install the agent locally"
 	@echo "coverage           Generate test coverage report"
+	@echo "release            Create a new release with cross-platform validation (requires VERSION)"
 
 # Build the agent
 build:
@@ -65,6 +66,22 @@ clean:
 	cargo clean
 	docker-compose -f docker-compose.integration.yml down --remove-orphans --volumes 2>/dev/null || true
 	docker rmi sentinel-mock-api sentinel-agent 2>/dev/null || true
+
+# Create a new release
+release:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "❌ VERSION is required. Usage: make release VERSION=v1.0.0"; \
+		exit 1; \
+	fi
+	@echo "🚀 Creating release $(VERSION)..."
+	@echo "📋 Running pre-release checks..."
+	@$(MAKE) test
+	@echo "✅ All tests passed!"
+	@echo "🏷️  Creating and pushing tag..."
+	git tag -a $(VERSION) -m "Release $(VERSION)"
+	git push origin $(VERSION)
+	@echo "🎉 Release $(VERSION) created! GitHub Actions will build and publish the release."
+	@echo "📍 Track progress: https://github.com/operion/sentinel-agent/actions"
 
 # Development workflow
 dev: clean build test

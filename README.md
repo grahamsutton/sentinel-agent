@@ -261,6 +261,33 @@ We welcome contributions! Please:
 4. Ensure all tests pass: `make test`
 5. Submit a pull request
 
+## Releases
+
+### Creating a Release
+
+Releases are automated via GitHub Actions when version tags are pushed:
+
+```bash
+# Create and push a new release
+make release VERSION=v1.0.0
+```
+
+This will:
+1. Run all tests (unit + integration) 
+2. Create and push a git tag
+3. Trigger GitHub Actions to build cross-platform binaries
+4. Test each binary on its target architecture
+5. Create a GitHub release with automated release notes
+6. Generate checksums for security verification
+
+### Release Process
+
+1. **Manual Decision**: Determine version number using semantic versioning
+2. **Automated Execution**: GitHub Actions handles testing, building, and publishing
+3. **Cross-Platform**: Builds for Linux (x86_64, ARM64), macOS (Intel, Apple Silicon), and Windows
+4. **Binary Validation**: Each binary is tested on its target architecture using native runners and QEMU
+5. **Security**: Includes SHA256 checksums for all binaries
+
 ## License
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
