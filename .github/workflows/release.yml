@@ -233,11 +233,16 @@ jobs:
             # Start mock API for QEMU test
             docker run -d --name mock-api-qemu -p 8080:8080 sentinel-mock-api
             sleep 3
-            # Test ARM64 binary with QEMU using host network
-            timeout 10s docker run --rm -v $(pwd):/workspace --network host --platform linux/arm64 ubuntu:22.04 \
-              /workspace/sentinel-agent-test --config /workspace/${{ matrix.test_config }} || true
+            # Start ARM64 binary test in background with QEMU
+            docker run -d --name agent-qemu-test -v $(pwd):/workspace --network host --platform linux/arm64 ubuntu:22.04 \
+              /workspace/sentinel-agent-test --config /workspace/${{ matrix.test_config }}
+            # Wait for agent to start and collect metrics (15 seconds should be enough for 2-3 metric collections)
+            sleep 15
+            # Check if metrics were collected by looking at container logs
+            docker logs agent-qemu-test 2>&1 | grep -q "Collected.*disk metrics" && echo "✅ ARM64 binary successfully collected metrics"
             # Cleanup
-            docker stop mock-api-qemu && docker rm mock-api-qemu
+            docker stop agent-qemu-test mock-api-qemu 2>/dev/null || true
+            docker rm agent-qemu-test mock-api-qemu 2>/dev/null || true
           else
             timeout 10s ./sentinel-agent-test --config ${{ matrix.test_config }} || true
           fi
