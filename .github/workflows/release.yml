@@ -79,9 +79,19 @@ jobs:
           target
         key: ${{ matrix.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+    - name: Install cross-compilation tools
+      if: matrix.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
+
     - name: Build (Unix)
       if: matrix.os != 'windows-latest'
       run: |
+        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+          export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+        fi
         cargo build --release --target ${{ matrix.target }}
 
     - name: Build (Windows)
