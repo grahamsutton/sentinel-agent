@@ -129,7 +129,7 @@ jobs:
             os: ubuntu-latest
             asset_name: sentinel-agent-linux-aarch64
             binary_name: sentinel-agent
-            test_config: tests/integration/test-config.yaml
+            test_config: tests/integration/test-config-qemu.yaml
             qemu: true
           - target: x86_64-apple-darwin
             os: macos-13  # Intel runner
@@ -218,9 +218,14 @@ jobs:
         run: |
           # Test that binary can load config and start (will fail after a few seconds due to no API, but that's expected)
           if [[ "${{ matrix.qemu }}" == "true" ]]; then
-            # Test ARM64 binary with QEMU
-            timeout 10s docker run --rm -v $(pwd):/workspace --platform linux/arm64 ubuntu:22.04 \
+            # Start mock API for QEMU test
+            docker run -d --name mock-api-qemu -p 8080:8080 sentinel-mock-api
+            sleep 3
+            # Test ARM64 binary with QEMU using host network
+            timeout 10s docker run --rm -v $(pwd):/workspace --network host --platform linux/arm64 ubuntu:22.04 \
               /workspace/sentinel-agent-test --config /workspace/${{ matrix.test_config }} || true
+            # Cleanup
+            docker stop mock-api-qemu && docker rm mock-api-qemu
           else
             timeout 10s ./sentinel-agent-test --config ${{ matrix.test_config }} || true
           fi
