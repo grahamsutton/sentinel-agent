@@ -401,5 +401,6 @@ jobs:
         prerelease: ${{ contains(steps.version.outputs.version, '-') }}
         files: |
           artifacts/**/*
+          install.sh
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

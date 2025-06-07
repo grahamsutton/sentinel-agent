@@ -85,15 +85,35 @@ else
     fi
 fi
 
-# Download binary
-DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${BINARY_NAME}-${TARGET}"
-TEMP_FILE="/tmp/${BINARY_NAME}"
+# Map target to asset name
+case $TARGET in
+    x86_64-unknown-linux-gnu) ASSET_NAME="sentinel-agent-linux-x86_64" ;;
+    aarch64-unknown-linux-gnu) ASSET_NAME="sentinel-agent-linux-aarch64" ;;
+    x86_64-apple-darwin) ASSET_NAME="sentinel-agent-macos-x86_64" ;;
+    aarch64-apple-darwin) ASSET_NAME="sentinel-agent-macos-aarch64" ;;
+    *) echo "❌ Unsupported target: $TARGET" && exit 1 ;;
+esac
 
-echo "⬇️  Downloading ${BINARY_NAME}..."
-curl -L -o "$TEMP_FILE" "$DOWNLOAD_URL"
+# Download binary archive
+DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET_NAME}.tar.gz"
+TEMP_ARCHIVE="/tmp/${ASSET_NAME}.tar.gz"
+TEMP_DIR="/tmp/sentinel-extract-$$"
+
+echo "⬇️  Downloading ${ASSET_NAME}..."
+curl -L -o "$TEMP_ARCHIVE" "$DOWNLOAD_URL"
+
+if [ ! -f "$TEMP_ARCHIVE" ]; then
+    echo "❌ Failed to download binary archive"
+    exit 1
+fi
+
+# Extract binary
+mkdir -p "$TEMP_DIR"
+tar -xzf "$TEMP_ARCHIVE" -C "$TEMP_DIR"
+TEMP_FILE="$TEMP_DIR/$BINARY_NAME"
 
 if [ ! -f "$TEMP_FILE" ]; then
-    echo "❌ Failed to download binary"
+    echo "❌ Failed to extract binary"
     exit 1
 fi
 
@@ -252,6 +272,10 @@ EOF
     echo "💡 Add ${USER_BIN} to your PATH if not already present:"
     echo "echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc"
 fi
+
+# Clean up temporary files
+rm -f "$TEMP_ARCHIVE"
+rm -rf "$TEMP_DIR"
 
 echo ""
 echo "🎉 Installation complete!"
