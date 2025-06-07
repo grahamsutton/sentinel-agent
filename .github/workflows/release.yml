@@ -228,6 +228,8 @@ jobs:
         run: |
           # Test that binary can load config and start (will fail after a few seconds due to no API, but that's expected)
           if [[ "${{ matrix.qemu }}" == "true" ]]; then
+            # Build mock API image for QEMU test
+            docker build -f tests/integration/Dockerfile.mock-api -t sentinel-mock-api .
             # Start mock API for QEMU test
             docker run -d --name mock-api-qemu -p 8080:8080 sentinel-mock-api
             sleep 3
