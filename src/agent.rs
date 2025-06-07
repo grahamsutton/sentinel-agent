@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use tokio::time::{Duration, interval};
 
-use crate::client::{ApiClient, ApiError};
+use crate::client::{ApiClient, ApiError, ServerRegistration};
 use crate::config::Config;
 use crate::metrics::{DiskMetric, MetricService};
 
@@ -62,6 +62,42 @@ impl SentinelAgent {
             .map_err(|e| AgentError::MetricCollection(e.to_string()))
     }
 
+    async fn register_server(&mut self) -> Result<(), AgentError> {
+        // Only register if OAuth is configured (indicating Operion platform integration)
+        if self.config.api.oauth.is_none() {
+            println!("OAuth not configured, skipping server registration");
+            return Ok(());
+        }
+
+        println!("Registering server with Operion platform...");
+
+        let registration = ServerRegistration {
+            agent_id: self.config.agent.id.clone(),
+            hostname: self.hostname.clone(),
+            agent_version: env!("CARGO_PKG_VERSION").to_string(),
+            platform: std::env::consts::OS.to_string(),
+            arch: std::env::consts::ARCH.to_string(),
+        };
+
+        match self.api_client.register_server(&registration).await {
+            Ok(response) => {
+                println!("✅ Server registered successfully");
+                println!("   Server ID: {}", response.server_id);
+                println!("   Status: {}", response.status);
+                if let Some(message) = response.message {
+                    println!("   Message: {}", message);
+                }
+                Ok(())
+            }
+            Err(e) => {
+                eprintln!("⚠️  Server registration failed: {}", e);
+                eprintln!("   Agent will continue without registration");
+                // Don't fail startup if registration fails - just log and continue
+                Ok(())
+            }
+        }
+    }
+
     pub async fn run(&mut self) -> Result<(), AgentError> {
         println!("Starting Operion Sentinel Agent...");
         println!("Agent ID: {}", self.config.agent.id);
@@ -74,6 +110,9 @@ impl SentinelAgent {
             "Flush interval: {} seconds",
             self.config.get_flush_interval_seconds()
         );
+
+        // Register server with Operion platform
+        self.register_server().await?;
 
         let mut collection_timer =
             interval(Duration::from_secs(self.config.collection.interval_seconds));

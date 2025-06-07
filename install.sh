@@ -170,9 +170,19 @@ agent:
 
 api:
   # REST API endpoint for metric ingestion
-  endpoint: "https://your-api-server.com"
+  endpoint: "https://api.operion.co"
   # Optional: Request timeout in seconds (default: 30)
   timeout_seconds: 30
+  
+  # OAuth configuration for Operion platform integration
+  # Required for server registration and billing tracking
+  oauth:
+    client_id: "your-client-id"
+    client_secret: "your-client-secret"
+    # Optional: Override default token endpoint
+    # token_endpoint: "https://api.operion.co/oauth/token"
+    # Optional: Override default scope
+    # scope: "server:register server:metrics"
 
 collection:
   # How often to collect metrics (seconds)
@@ -231,9 +241,19 @@ agent:
 
 api:
   # REST API endpoint for metric ingestion
-  endpoint: "https://your-api-server.com"
+  endpoint: "https://api.operion.co"
   # Optional: Request timeout in seconds (default: 30)
   timeout_seconds: 30
+  
+  # OAuth configuration for Operion platform integration
+  # Required for server registration and billing tracking
+  oauth:
+    client_id: "your-client-id"
+    client_secret: "your-client-secret"
+    # Optional: Override default token endpoint
+    # token_endpoint: "https://api.operion.co/oauth/token"
+    # Optional: Override default scope
+    # scope: "server:register server:metrics"
 
 collection:
   # How often to collect metrics (seconds)

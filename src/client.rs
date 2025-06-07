@@ -1,12 +1,31 @@
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 use crate::config::Config;
 use crate::metrics::MetricBatch;
+use crate::oauth::OAuthManager;
+
+#[derive(Debug, Serialize)]
+pub struct ServerRegistration {
+    pub agent_id: String,
+    pub hostname: String,
+    pub agent_version: String,
+    pub platform: String,
+    pub arch: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ServerRegistrationResponse {
+    pub server_id: String,
+    pub status: String,
+    pub message: Option<String>,
+}
 
 pub struct ApiClient {
     client: Client,
     endpoint: String,
+    oauth_manager: Option<OAuthManager>,
 }
 
 impl ApiClient {
@@ -17,9 +36,17 @@ impl ApiClient {
             .build()
             .map_err(|e| ApiError::ClientCreation(e.to_string()))?;
 
+        // Initialize OAuth manager if OAuth is configured
+        let oauth_manager = if config.api.oauth.is_some() {
+            Some(OAuthManager::new(config).map_err(|e| ApiError::OAuthSetup(e.to_string()))?)
+        } else {
+            None
+        };
+
         Ok(Self {
             client,
             endpoint: config.api.endpoint.clone(),
+            oauth_manager,
         })
     }
 
@@ -50,6 +77,44 @@ impl ApiClient {
         Ok(())
     }
 
+    pub async fn register_server(&mut self, registration: &ServerRegistration) -> Result<ServerRegistrationResponse, ApiError> {
+        let url = format!("{}/v1/servers", self.endpoint);
+
+        let mut request = self.client.post(&url).json(registration);
+
+        // Add OAuth authorization if available
+        if let Some(oauth_manager) = &mut self.oauth_manager {
+            let token = oauth_manager.get_access_token().await
+                .map_err(|e| ApiError::Authentication(e.to_string()))?;
+            request = request.bearer_auth(token);
+        }
+
+        let response = request
+            .send()
+            .await
+            .map_err(|e| ApiError::Request(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
+
+            return Err(ApiError::Response {
+                status: status.as_u16(),
+                body,
+            });
+        }
+
+        let registration_response: ServerRegistrationResponse = response
+            .json()
+            .await
+            .map_err(|e| ApiError::Parse(e.to_string()))?;
+
+        Ok(registration_response)
+    }
+
     pub fn endpoint(&self) -> &str {
         &self.endpoint
     }
@@ -59,8 +124,14 @@ impl ApiClient {
 pub enum ApiError {
     #[error("Failed to create HTTP client: {0}")]
     ClientCreation(String),
+    #[error("OAuth setup failed: {0}")]
+    OAuthSetup(String),
+    #[error("Authentication failed: {0}")]
+    Authentication(String),
     #[error("Request failed: {0}")]
     Request(String),
+    #[error("Failed to parse response: {0}")]
+    Parse(String),
     #[error("API returned error status {status}: {body}")]
     Response { status: u16, body: String },
 }
@@ -185,5 +256,67 @@ collection:
             ApiError::Request(_) => {},
             _ => panic!("Expected ApiError::Request"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_server_registration_success() {
+        let mock_server = MockServer::start().await;
+        let config = create_test_config(&mock_server.uri()).await;
+        
+        Mock::given(method("POST"))
+            .and(path("/v1/servers"))
+            .respond_with(ResponseTemplate::new(201).set_body_json(&serde_json::json!({
+                "server_id": "srv_123456789",
+                "status": "registered",
+                "message": "Server registered successfully"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let mut client = ApiClient::new(&config).unwrap();
+        
+        let registration = ServerRegistration {
+            agent_id: "test-agent".to_string(),
+            hostname: "test-host".to_string(),
+            agent_version: "0.1.0".to_string(),
+            platform: "linux".to_string(),
+            arch: "x86_64".to_string(),
+        };
+
+        let result = client.register_server(&registration).await;
+        assert!(result.is_ok());
+        
+        let response = result.unwrap();
+        assert_eq!(response.server_id, "srv_123456789");
+        assert_eq!(response.status, "registered");
+        assert_eq!(response.message, Some("Server registered successfully".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_server_registration_without_oauth() {
+        let mock_server = MockServer::start().await;
+        let config = create_test_config(&mock_server.uri()).await;
+        
+        Mock::given(method("POST"))
+            .and(path("/v1/servers"))
+            .respond_with(ResponseTemplate::new(201).set_body_json(&serde_json::json!({
+                "server_id": "srv_123456789",
+                "status": "registered"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let mut client = ApiClient::new(&config).unwrap();
+        
+        let registration = ServerRegistration {
+            agent_id: "test-agent".to_string(),
+            hostname: "test-host".to_string(),
+            agent_version: "0.1.0".to_string(),
+            platform: "linux".to_string(),
+            arch: "x86_64".to_string(),
+        };
+
+        let result = client.register_server(&registration).await;
+        assert!(result.is_ok());
     }
 }

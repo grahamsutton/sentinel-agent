@@ -18,6 +18,15 @@ pub struct AgentConfig {
 pub struct ApiConfig {
     pub endpoint: String,
     pub timeout_seconds: Option<u64>,
+    pub oauth: Option<OAuthConfig>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct OAuthConfig {
+    pub client_id: String,
+    pub client_secret: String,
+    pub token_endpoint: Option<String>,
+    pub scope: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -75,6 +84,20 @@ impl Config {
             ));
         }
 
+        // Validate OAuth config if present
+        if let Some(oauth) = &self.api.oauth {
+            if oauth.client_id.is_empty() {
+                return Err(ConfigError::Validation(
+                    "OAuth client_id cannot be empty".to_string(),
+                ));
+            }
+            if oauth.client_secret.is_empty() {
+                return Err(ConfigError::Validation(
+                    "OAuth client_secret cannot be empty".to_string(),
+                ));
+            }
+        }
+
         Ok(())
     }
 
@@ -95,6 +118,24 @@ impl Config {
 
     pub fn get_flush_interval_seconds(&self) -> u64 {
         self.collection.flush_interval_seconds.unwrap_or(10)
+    }
+
+    pub fn get_oauth_token_endpoint(&self) -> Option<String> {
+        self.api.oauth.as_ref().and_then(|oauth| {
+            oauth.token_endpoint.clone().or_else(|| {
+                // Default to Operion's OAuth endpoint if not specified
+                Some("https://api.operion.co/oauth/token".to_string())
+            })
+        })
+    }
+
+    pub fn get_oauth_scope(&self) -> Option<String> {
+        self.api.oauth.as_ref().and_then(|oauth| {
+            oauth.scope.clone().or_else(|| {
+                // Default scope for server registration
+                Some("server:register server:metrics".to_string())
+            })
+        })
     }
 }
 
