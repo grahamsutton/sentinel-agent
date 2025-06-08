@@ -57,8 +57,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .get_matches();
 
-    let config_path = if let Some(config_str) = matches.get_one::<String>("config") {
-        PathBuf::from(config_str)
+    let config_path = if let Some(config_path) = matches.get_one::<PathBuf>("config") {
+        config_path.clone()
     } else {
         find_default_config_path()
     };
