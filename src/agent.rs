@@ -62,10 +62,10 @@ impl SentinelAgent {
             .map_err(|e| AgentError::MetricCollection(e.to_string()))
     }
 
-    async fn register_server(&mut self) -> Result<(), AgentError> {
-        // Only register if OAuth is configured (indicating Operion platform integration)
-        if self.config.api.oauth.is_none() {
-            println!("OAuth not configured, skipping server registration");
+    async fn register_server(&self) -> Result<(), AgentError> {
+        // Only register if API key is configured (indicating Operion platform integration)
+        if self.config.api.api_key.is_none() {
+            println!("API key not configured, skipping server registration");
             return Ok(());
         }
 

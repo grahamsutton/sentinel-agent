@@ -2,7 +2,6 @@ mod agent;
 mod client;
 mod config;
 mod metrics;
-mod oauth;
 
 use clap::{Arg, Command};
 use std::path::PathBuf;

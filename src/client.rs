@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use crate::config::Config;
 use crate::metrics::MetricBatch;
-use crate::oauth::OAuthManager;
 
 #[derive(Debug, Serialize)]
 pub struct ServerRegistration {
@@ -25,7 +24,7 @@ pub struct ServerRegistrationResponse {
 pub struct ApiClient {
     client: Client,
     endpoint: String,
-    oauth_manager: Option<OAuthManager>,
+    api_key: Option<String>,
 }
 
 impl ApiClient {
@@ -36,27 +35,24 @@ impl ApiClient {
             .build()
             .map_err(|e| ApiError::ClientCreation(e.to_string()))?;
 
-        // Initialize OAuth manager if OAuth is configured
-        let oauth_manager = if config.api.oauth.is_some() {
-            Some(OAuthManager::new(config).map_err(|e| ApiError::OAuthSetup(e.to_string()))?)
-        } else {
-            None
-        };
-
         Ok(Self {
             client,
             endpoint: config.api.endpoint.clone(),
-            oauth_manager,
+            api_key: config.api.api_key.clone(),
         })
     }
 
     pub async fn send_metrics(&self, batch: &MetricBatch) -> Result<(), ApiError> {
         let url = format!("{}/v1/metrics", self.endpoint);
 
-        let response = self
-            .client
-            .post(&url)
-            .json(batch)
+        let mut request = self.client.post(&url).json(batch);
+
+        // Add API key authentication if available
+        if let Some(api_key) = &self.api_key {
+            request = request.header("X-API-Key", api_key);
+        }
+
+        let response = request
             .send()
             .await
             .map_err(|e| ApiError::Request(e.to_string()))?;
@@ -77,16 +73,14 @@ impl ApiClient {
         Ok(())
     }
 
-    pub async fn register_server(&mut self, registration: &ServerRegistration) -> Result<ServerRegistrationResponse, ApiError> {
+    pub async fn register_server(&self, registration: &ServerRegistration) -> Result<ServerRegistrationResponse, ApiError> {
         let url = format!("{}/v1/servers", self.endpoint);
 
         let mut request = self.client.post(&url).json(registration);
 
-        // Add OAuth authorization if available
-        if let Some(oauth_manager) = &mut self.oauth_manager {
-            let token = oauth_manager.get_access_token().await
-                .map_err(|e| ApiError::Authentication(e.to_string()))?;
-            request = request.bearer_auth(token);
+        // Add API key authentication if available
+        if let Some(api_key) = &self.api_key {
+            request = request.header("X-API-Key", api_key);
         }
 
         let response = request
@@ -124,10 +118,6 @@ impl ApiClient {
 pub enum ApiError {
     #[error("Failed to create HTTP client: {0}")]
     ClientCreation(String),
-    #[error("OAuth setup failed: {0}")]
-    OAuthSetup(String),
-    #[error("Authentication failed: {0}")]
-    Authentication(String),
     #[error("Request failed: {0}")]
     Request(String),
     #[error("Failed to parse response: {0}")]
@@ -156,6 +146,21 @@ collection:
   disk:
     enabled: true
 "#, endpoint)).unwrap()
+    }
+
+    async fn create_test_config_with_api_key(endpoint: &str, api_key: &str) -> Config {
+        Config::load_from_str(&format!(r#"
+agent:
+  id: "test-agent"
+api:
+  endpoint: "{}"
+  timeout_seconds: 5
+  api_key: "{}"
+collection:
+  interval_seconds: 60
+  disk:
+    enabled: true
+"#, endpoint, api_key)).unwrap()
     }
 
     #[tokio::test]
@@ -259,9 +264,9 @@ collection:
     }
 
     #[tokio::test]
-    async fn test_server_registration_success() {
+    async fn test_server_registration_with_api_key() {
         let mock_server = MockServer::start().await;
-        let config = create_test_config(&mock_server.uri()).await;
+        let config = create_test_config_with_api_key(&mock_server.uri(), "test-api-key").await;
         
         Mock::given(method("POST"))
             .and(path("/v1/servers"))
@@ -273,7 +278,7 @@ collection:
             .mount(&mock_server)
             .await;
 
-        let mut client = ApiClient::new(&config).unwrap();
+        let client = ApiClient::new(&config).unwrap();
         
         let registration = ServerRegistration {
             agent_id: "test-agent".to_string(),
@@ -293,7 +298,7 @@ collection:
     }
 
     #[tokio::test]
-    async fn test_server_registration_without_oauth() {
+    async fn test_server_registration_without_api_key() {
         let mock_server = MockServer::start().await;
         let config = create_test_config(&mock_server.uri()).await;
         
@@ -306,7 +311,7 @@ collection:
             .mount(&mock_server)
             .await;
 
-        let mut client = ApiClient::new(&config).unwrap();
+        let client = ApiClient::new(&config).unwrap();
         
         let registration = ServerRegistration {
             agent_id: "test-agent".to_string(),

@@ -174,15 +174,10 @@ api:
   # Optional: Request timeout in seconds (default: 30)
   timeout_seconds: 30
   
-  # OAuth configuration for Operion platform integration
+  # API key for Operion platform authentication
   # Required for server registration and billing tracking
-  oauth:
-    client_id: "your-client-id"
-    client_secret: "your-client-secret"
-    # Optional: Override default token endpoint
-    # token_endpoint: "https://api.operion.co/oauth/token"
-    # Optional: Override default scope
-    # scope: "server:register server:metrics"
+  # Get your API key from https://app.operion.co/settings/api-keys
+  api_key: "your-api-key-here"
 
 collection:
   # How often to collect metrics (seconds)
@@ -245,15 +240,10 @@ api:
   # Optional: Request timeout in seconds (default: 30)
   timeout_seconds: 30
   
-  # OAuth configuration for Operion platform integration
+  # API key for Operion platform authentication
   # Required for server registration and billing tracking
-  oauth:
-    client_id: "your-client-id"
-    client_secret: "your-client-secret"
-    # Optional: Override default token endpoint
-    # token_endpoint: "https://api.operion.co/oauth/token"
-    # Optional: Override default scope
-    # scope: "server:register server:metrics"
+  # Get your API key from https://app.operion.co/settings/api-keys
+  api_key: "your-api-key-here"
 
 collection:
   # How often to collect metrics (seconds)
