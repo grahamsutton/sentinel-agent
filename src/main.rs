@@ -52,7 +52,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .short('c')
                 .long("config")
                 .value_name("FILE")
-                .help("Configuration file path (auto-detected if not specified)"),
+                .help("Configuration file path (auto-detected if not specified)")
+                .value_parser(clap::value_parser!(PathBuf)),
         )
         .get_matches();
 
