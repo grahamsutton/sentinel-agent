@@ -9,6 +9,39 @@ use std::path::PathBuf;
 use agent::SentinelAgent;
 use config::Config;
 
+fn find_default_config_path() -> PathBuf {
+    // Priority order for config file locations:
+    let candidates = vec![
+        // 1. XDG config directory (industry standard, highest priority)
+        dirs::home_dir().map(|dir| dir.join(".config").join("operion").join("agent.yaml")),
+        // 2. Platform-specific config directory (fallback)
+        dirs::config_dir().map(|dir| dir.join("operion").join("agent.yaml")),
+        // 3. System-wide config
+        Some(PathBuf::from("/etc/operion/agent.yaml")),
+        // 4. Current directory (development/testing)
+        Some(PathBuf::from("agent.yaml")),
+    ];
+
+    // Return the first config file that exists
+    for candidate in candidates {
+        if let Some(path) = candidate {
+            if path.exists() {
+                return path;
+            }
+        }
+    }
+
+    // If no config file exists, prefer XDG config directory
+    if let Some(home_dir) = dirs::home_dir() {
+        home_dir.join(".config").join("operion").join("agent.yaml")
+    } else if let Some(config_dir) = dirs::config_dir() {
+        config_dir.join("operion").join("agent.yaml")
+    } else {
+        // Fallback to system location
+        PathBuf::from("/etc/operion/agent.yaml")
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = Command::new("Operion Sentinel Agent")
@@ -19,16 +52,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .short('c')
                 .long("config")
                 .value_name("FILE")
-                .help("Configuration file path")
-                .default_value("/etc/operion/agent.yaml"),
+                .help("Configuration file path (auto-detected if not specified)"),
         )
         .get_matches();
 
-    let config_path = PathBuf::from(matches.get_one::<String>("config").unwrap());
+    let config_path = if let Some(config_str) = matches.get_one::<String>("config") {
+        PathBuf::from(config_str)
+    } else {
+        find_default_config_path()
+    };
 
     if !config_path.exists() {
         eprintln!("Configuration file not found: {}", config_path.display());
-        eprintln!("Create a configuration file or specify a different path with --config");
+        eprintln!("");
+        eprintln!("Sentinel Agent looks for configuration files in this order:");
+        if let Some(home_dir) = dirs::home_dir() {
+            eprintln!("  1. {}", home_dir.join(".config").join("operion").join("agent.yaml").display());
+        }
+        if let Some(config_dir) = dirs::config_dir() {
+            eprintln!("  2. {}", config_dir.join("operion").join("agent.yaml").display());
+        }
+        eprintln!("  3. /etc/operion/agent.yaml");
+        eprintln!("  4. ./agent.yaml");
+        eprintln!("");
+        eprintln!("Create a configuration file in one of these locations, or specify a path with --config");
         std::process::exit(1);
     }
 
