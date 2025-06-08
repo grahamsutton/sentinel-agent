@@ -64,7 +64,7 @@ BINARY_NAME="sentinel-agent"
 # Get release version
 if [ -z "$VERSION" ]; then
     echo "📡 Fetching latest release..."
-    LATEST_RELEASE=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+    LATEST_RELEASE=$(curl -s "https://api.github.com/repos/${REPO}/releases" | grep '"tag_name"' | head -1 | cut -d'"' -f4)
     
     if [ -z "$LATEST_RELEASE" ]; then
         echo "❌ Failed to fetch latest release"
@@ -77,7 +77,7 @@ else
     echo "📦 Installing specified version: $VERSION"
     
     # Validate that the specified version exists
-    RELEASE_CHECK=$(curl -s "https://api.github.com/repos/${REPO}/releases/tags/${VERSION}" | grep '"tag_name"')
+    RELEASE_CHECK=$(curl -s "https://api.github.com/repos/${REPO}/releases" | grep "\"tag_name\": \"$VERSION\"")
     if [ -z "$RELEASE_CHECK" ]; then
         echo "❌ Version $VERSION not found"
         echo "💡 Check available versions at: https://github.com/${REPO}/releases"
