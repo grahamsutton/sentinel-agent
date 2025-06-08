@@ -2,7 +2,7 @@
 
 set -e
 
-REPO="operion/sentinel-agent"
+REPO="grahamsutton/sentinel-agent"
 INSTALL_DIR="/usr/local/bin"
 SERVICE_DIR="/etc/systemd/system"
 CONFIG_DIR="/etc/operion"
