@@ -140,7 +140,7 @@ sudo journalctl -u operion-agent -f
 - **Total Space**: Total disk space in bytes
 - **Used Space**: Used disk space in bytes  
 - **Available Space**: Available disk space in bytes
-- **Usage Percentage**: Disk usage as percentage
+- **Usage Percentage**: Disk usage as decimal (0.0 to 1.0)
 
 All metrics include timestamps and are sent to your configured API endpoint in JSON format.
 
@@ -193,7 +193,7 @@ The agent sends metrics via HTTP POST to `/v1/metrics` with the following JSON s
       "total_space_bytes": 100000000000,
       "used_space_bytes": 50000000000,
       "available_space_bytes": 50000000000,
-      "usage_percentage": 50.0
+      "usage_percentage": 0.50
     }
   ]
 }

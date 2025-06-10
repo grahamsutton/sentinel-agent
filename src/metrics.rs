@@ -69,7 +69,7 @@ impl DiskCollector {
         let available_space = disk.available_space();
         let used_space = total_space - available_space;
         let usage_percentage = if total_space > 0 {
-            (used_space as f64 / total_space as f64) * 100.0
+            used_space as f64 / total_space as f64
         } else {
             0.0
         };
@@ -227,7 +227,7 @@ mod tests {
             total_space_bytes: 1000000,
             used_space_bytes: 500000,
             available_space_bytes: 500000,
-            usage_percentage: 50.0,
+            usage_percentage: 0.5,
         };
 
         let config = Config::load_from_str(r#"
