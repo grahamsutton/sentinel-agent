@@ -1,7 +1,7 @@
 # Operion Sentinel Agent
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Release](https://img.shields.io/github/v/release/operion/sentinel-agent)](https://github.com/operion/sentinel-agent/releases)
+[![Release](https://img.shields.io/github/v/release/grahamsutton/sentinel-agent)](https://github.com/grahamsutton/sentinel-agent/releases)
 
 A lightweight, open-source monitoring agent for collecting system metrics and sending them to the Operion platform. Built in Rust for performance, reliability, and minimal resource usage.
 
@@ -21,15 +21,15 @@ A lightweight, open-source monitoring agent for collecting system metrics and se
 
 ```bash
 # Install latest version
-curl -fsSL https://raw.githubusercontent.com/operion/sentinel-agent/main/install.sh | bash
+curl -fsSL https://github.com/grahamsutton/sentinel-agent/releases/latest/download/install.sh | bash
 
 # Install specific version
-curl -fsSL https://raw.githubusercontent.com/operion/sentinel-agent/main/install.sh | bash -s -- --version v1.0.0
+curl -fsSL https://github.com/grahamsutton/sentinel-agent/releases/download/v1.0.0/install.sh | bash
 ```
 
 ### Manual Installation
 
-1. Download the binary for your platform from [releases](https://github.com/operion/sentinel-agent/releases)
+1. Download the binary for your platform from [releases](https://github.com/grahamsutton/sentinel-agent/releases)
 2. Create a configuration file (see [Configuration](#configuration))
 3. Run the agent: `./sentinel-agent --config /path/to/config.yaml`
 
@@ -48,9 +48,14 @@ agent:
 
 api:
   # REST API endpoint for metric ingestion
-  endpoint: "https://api.operion.com"
+  endpoint: "https://api.operion.co"
   # Optional: Request timeout in seconds (default: 30)
   timeout_seconds: 30
+  
+  # API key for Operion platform authentication
+  # Required for server registration and billing tracking
+  # Get your API key from https://app.operion.co/settings/api-keys
+  api_key: "your-api-key-here"
 
 collection:
   # How often to collect metrics (seconds)
@@ -94,15 +99,21 @@ For user installation (when run as regular user):
 ### Command Line Options
 
 ```bash
-# Use default config location
+# Use auto-detected config location
 sentinel-agent
 
 # Specify custom config file
 sentinel-agent --config /path/to/config.yaml
 
-# Show help
+# Show help and config locations
 sentinel-agent --help
 ```
+
+The agent automatically detects configuration files in this order:
+1. `~/.config/operion/agent.yaml` (user installation)
+2. `~/Library/Application Support/operion/agent.yaml` (macOS fallback)
+3. `/etc/operion/agent.yaml` (system installation)
+4. `./agent.yaml` (development)
 
 ### Systemd Service Management
 
@@ -144,7 +155,7 @@ All metrics include timestamps and are sent to your configured API endpoint in J
 
 ```bash
 # Clone the repository
-git clone https://github.com/operion/sentinel-agent.git
+git clone https://github.com/grahamsutton/sentinel-agent.git
 cd sentinel-agent
 
 # Build release binary
@@ -171,7 +182,7 @@ The agent sends metrics via HTTP POST to `/v1/metrics` with the following JSON s
 
 ```json
 {
-  "agent_id": "web-server-01",
+  "server_id": "web-server-01",
   "hostname": "web01.example.com", 
   "timestamp": 1640995200,
   "metrics": [
@@ -208,7 +219,7 @@ The agent sends metrics via HTTP POST to `/v1/metrics` with the following JSON s
 
 ```bash
 # Clone and setup
-git clone https://github.com/operion/sentinel-agent.git
+git clone https://github.com/grahamsutton/sentinel-agent.git
 cd sentinel-agent
 
 # Build the agent
@@ -294,10 +305,10 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for detai
 
 ## Support
 
-- 📖 **Documentation**: [docs.operion.com](https://docs.operion.com)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/operion/sentinel-agent/issues)
+- 📖 **Documentation**: [docs.operion.co](https://docs.operion.co)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/grahamsutton/sentinel-agent/issues)
 - 💬 **Community**: [Discord](https://discord.gg/operion)
-- 📧 **Email**: support@operion.com
+- 📧 **Email**: support@operion.co
 
 ---
 
