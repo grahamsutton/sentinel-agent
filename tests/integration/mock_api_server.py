@@ -48,13 +48,13 @@ def receive_metrics():
             return jsonify({'error': 'No JSON payload'}), 400
         
         # Validate required fields
-        required_fields = ['agent_id', 'hostname', 'metrics']
+        required_fields = ['server_id', 'hostname', 'metrics']
         for field in required_fields:
             if field not in metrics_batch:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
         
         # Update statistics
-        agent_id = metrics_batch['agent_id']
+        server_id = metrics_batch['server_id']
         hostname = metrics_batch['hostname']
         metrics_count = len(metrics_batch['metrics'])
         
@@ -68,7 +68,7 @@ def receive_metrics():
             'batch': metrics_batch
         })
         
-        logger.info(f"Received {metrics_count} metrics from {agent_id} ({hostname})")
+        logger.info(f"Received {metrics_count} metrics from {server_id} ({hostname})")
         
         # Log individual metrics for debugging
         for metric in metrics_batch['metrics']:
