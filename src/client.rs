@@ -53,7 +53,7 @@ impl ApiClient {
 
         // Add API key authentication if available
         if let Some(api_key) = &self.api_key {
-            request = request.header("X-API-Key", api_key);
+            request = request.header("Authorization", format!("Bearer {}", api_key));
         }
 
         let response = request
@@ -88,7 +88,7 @@ impl ApiClient {
 
         // Add API key authentication if available
         if let Some(api_key) = &self.api_key {
-            request = request.header("X-API-Key", api_key);
+            request = request.header("Authorization", format!("Bearer {}", api_key));
         }
 
         let response = request
