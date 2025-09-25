@@ -178,7 +178,7 @@ cargo build --target aarch64-unknown-linux-gnu --release
 
 ## API Integration
 
-The agent sends metrics via HTTP POST to `/v1/metrics` with the following JSON structure:
+The agent sends metrics via HTTP POST to `/api/v1/metrics` with the following JSON structure:
 
 ```json
 {

@@ -43,9 +43,13 @@ impl ApiClient {
     }
 
     pub async fn send_metrics(&self, batch: &MetricBatch) -> Result<(), ApiError> {
-        let url = format!("{}/v1/metrics", self.endpoint);
+        let url = format!("{}/api/v1/metrics", self.endpoint);
 
-        let mut request = self.client.post(&url).json(batch);
+        let mut request = self.client
+            .post(&url)
+            .json(batch)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json");
 
         // Add API key authentication if available
         if let Some(api_key) = &self.api_key {
@@ -74,9 +78,13 @@ impl ApiClient {
     }
 
     pub async fn register_server(&self, registration: &ServerRegistration) -> Result<ServerRegistrationResponse, ApiError> {
-        let url = format!("{}/v1/servers", self.endpoint);
+        let url = format!("{}/api/v1/servers", self.endpoint);
 
-        let mut request = self.client.post(&url).json(registration);
+        let mut request = self.client
+            .post(&url)
+            .json(registration)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json");
 
         // Add API key authentication if available
         if let Some(api_key) = &self.api_key {
@@ -176,7 +184,7 @@ collection:
         let config = create_test_config(&mock_server.uri()).await;
         
         Mock::given(method("POST"))
-            .and(path("/v1/metrics"))
+            .and(path("/api/v1/metrics"))
             .respond_with(ResponseTemplate::new(200))
             .mount(&mock_server)
             .await;
@@ -206,7 +214,7 @@ collection:
         let config = create_test_config(&mock_server.uri()).await;
         
         Mock::given(method("POST"))
-            .and(path("/v1/metrics"))
+            .and(path("/api/v1/metrics"))
             .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
             .mount(&mock_server)
             .await;
@@ -269,7 +277,7 @@ collection:
         let config = create_test_config_with_api_key(&mock_server.uri(), "test-api-key").await;
         
         Mock::given(method("POST"))
-            .and(path("/v1/servers"))
+            .and(path("/api/v1/servers"))
             .respond_with(ResponseTemplate::new(201).set_body_json(&serde_json::json!({
                 "server_id": "srv_123456789",
                 "status": "registered",
@@ -303,7 +311,7 @@ collection:
         let config = create_test_config(&mock_server.uri()).await;
         
         Mock::given(method("POST"))
-            .and(path("/v1/servers"))
+            .and(path("/api/v1/servers"))
             .respond_with(ResponseTemplate::new(201).set_body_json(&serde_json::json!({
                 "server_id": "srv_123456789",
                 "status": "registered"

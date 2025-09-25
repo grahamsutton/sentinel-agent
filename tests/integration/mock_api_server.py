@@ -38,7 +38,34 @@ def health_check():
         'uptime_seconds': time.time() - server_stats['start_time']
     })
 
-@app.route('/v1/metrics', methods=['POST'])
+@app.route('/api/v1/servers', methods=['POST'])
+def register_server():
+    """Register a new server/agent"""
+    try:
+        registration = request.get_json()
+
+        if not registration:
+            return jsonify({'error': 'No JSON payload'}), 400
+
+        # Validate required fields
+        required_fields = ['agent_id', 'hostname', 'agent_version', 'platform', 'arch']
+        for field in required_fields:
+            if field not in registration:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+
+        logger.info(f"Server registration: {registration['agent_id']} ({registration['hostname']})")
+
+        return jsonify({
+            'server_id': f"srv_{registration['agent_id']}",
+            'status': 'registered',
+            'message': 'Server registered successfully'
+        }), 201
+
+    except Exception as e:
+        logger.error(f"Error processing server registration: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/v1/metrics', methods=['POST'])
 def receive_metrics():
     """Receive metrics from Sentinel agents"""
     try:
@@ -149,7 +176,7 @@ def reset_server():
 if __name__ == '__main__':
     print("🚀 Starting Mock Operion API Server...")
     print("📍 Health check: GET /health")
-    print("📊 Metrics endpoint: POST /v1/metrics")
+    print("📊 Metrics endpoint: POST /api/v1/metrics")
     print("📈 Statistics: GET /stats")
     print("🔄 Reset: POST /reset")
     
