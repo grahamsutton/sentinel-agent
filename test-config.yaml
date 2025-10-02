@@ -1,0 +1,23 @@
+# Test configuration for resource registration
+
+agent:
+  hostname: "test-host"
+
+api:
+  endpoint: "https://solid-banks-drum.loca.lt"
+  api_key: "your-api-key-here"
+  timeout_seconds: 30
+
+collection:
+  interval_seconds: 60
+  flush_interval_seconds: 10
+  batch_size: 100
+
+  disk:
+    enabled: true
+    exclude_mount_points:
+      - "/dev"
+      - "/proc"
+      - "/sys"
+      - "/run"
+      - "/tmp"

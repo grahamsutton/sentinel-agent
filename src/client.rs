@@ -6,8 +6,7 @@ use crate::config::Config;
 use crate::metrics::MetricBatch;
 
 #[derive(Debug, Serialize)]
-pub struct ServerRegistration {
-    pub agent_id: String,
+pub struct ResourceRegistration {
     pub hostname: String,
     pub agent_version: String,
     pub platform: String,
@@ -15,8 +14,8 @@ pub struct ServerRegistration {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ServerRegistrationResponse {
-    pub server_id: String,
+pub struct ResourceRegistrationResponse {
+    pub resource_id: String,
     pub status: String,
     pub message: Option<String>,
 }
@@ -77,8 +76,8 @@ impl ApiClient {
         Ok(())
     }
 
-    pub async fn register_server(&self, registration: &ServerRegistration) -> Result<ServerRegistrationResponse, ApiError> {
-        let url = format!("{}/api/v1/servers", self.endpoint);
+    pub async fn register_resource(&self, registration: &ResourceRegistration) -> Result<ResourceRegistrationResponse, ApiError> {
+        let url = format!("{}/api/v1/resources", self.endpoint);
 
         let mut request = self.client
             .post(&url)
@@ -109,7 +108,7 @@ impl ApiClient {
             });
         }
 
-        let registration_response: ServerRegistrationResponse = response
+        let registration_response: ResourceRegistrationResponse = response
             .json()
             .await
             .map_err(|e| ApiError::Parse(e.to_string()))?;
@@ -272,48 +271,47 @@ collection:
     }
 
     #[tokio::test]
-    async fn test_server_registration_with_api_key() {
+    async fn test_resource_registration_with_api_key() {
         let mock_server = MockServer::start().await;
         let config = create_test_config_with_api_key(&mock_server.uri(), "test-api-key").await;
         
         Mock::given(method("POST"))
-            .and(path("/api/v1/servers"))
+            .and(path("/api/v1/resources"))
             .respond_with(ResponseTemplate::new(201).set_body_json(&serde_json::json!({
-                "server_id": "srv_123456789",
+                "resource_id": "res_123456789",
                 "status": "registered",
-                "message": "Server registered successfully"
+                "message": "Resource registered successfully"
             })))
             .mount(&mock_server)
             .await;
 
         let client = ApiClient::new(&config).unwrap();
         
-        let registration = ServerRegistration {
-            agent_id: "test-agent".to_string(),
+        let registration = ResourceRegistration {
             hostname: "test-host".to_string(),
             agent_version: "0.1.0".to_string(),
             platform: "linux".to_string(),
             arch: "x86_64".to_string(),
         };
 
-        let result = client.register_server(&registration).await;
+        let result = client.register_resource(&registration).await;
         assert!(result.is_ok());
         
         let response = result.unwrap();
-        assert_eq!(response.server_id, "srv_123456789");
+        assert_eq!(response.resource_id, "res_123456789");
         assert_eq!(response.status, "registered");
-        assert_eq!(response.message, Some("Server registered successfully".to_string()));
+        assert_eq!(response.message, Some("Resource registered successfully".to_string()));
     }
 
     #[tokio::test]
-    async fn test_server_registration_without_api_key() {
+    async fn test_resource_registration_without_api_key() {
         let mock_server = MockServer::start().await;
         let config = create_test_config(&mock_server.uri()).await;
         
         Mock::given(method("POST"))
-            .and(path("/api/v1/servers"))
+            .and(path("/api/v1/resources"))
             .respond_with(ResponseTemplate::new(201).set_body_json(&serde_json::json!({
-                "server_id": "srv_123456789",
+                "resource_id": "res_123456789",
                 "status": "registered"
             })))
             .mount(&mock_server)
@@ -321,15 +319,14 @@ collection:
 
         let client = ApiClient::new(&config).unwrap();
         
-        let registration = ServerRegistration {
-            agent_id: "test-agent".to_string(),
+        let registration = ResourceRegistration {
             hostname: "test-host".to_string(),
             agent_version: "0.1.0".to_string(),
             platform: "linux".to_string(),
             arch: "x86_64".to_string(),
         };
 
-        let result = client.register_server(&registration).await;
+        let result = client.register_resource(&registration).await;
         assert!(result.is_ok());
     }
 }

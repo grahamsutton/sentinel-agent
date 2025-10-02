@@ -80,7 +80,7 @@ async fn test_sentinel_agent_integration() {
     
     // Validate metrics structure
     let batch = &latest_metrics["batch"];
-    assert!(batch["agent_id"].is_string(), "Missing agent_id");
+    assert!(batch["resource_id"].is_string(), "Missing resource_id");
     assert!(batch["hostname"].is_string(), "Missing hostname");
     assert!(batch["timestamp"].is_number(), "Missing timestamp");
     assert!(batch["metrics"].is_array(), "Missing metrics array");

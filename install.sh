@@ -163,8 +163,6 @@ EOF
 # Operion Sentinel Agent Configuration
 
 agent:
-  # Unique identifier for this agent/server
-  id: "server-$(hostname)"
   # Optional: Override hostname detection
   # hostname: "custom-hostname"
 
@@ -229,8 +227,6 @@ else
 # Operion Sentinel Agent Configuration
 
 agent:
-  # Unique identifier for this agent/server
-  id: "user-$(hostname)"
   # Optional: Override hostname detection
   # hostname: "custom-hostname"
 

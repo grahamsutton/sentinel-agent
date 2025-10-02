@@ -2,6 +2,7 @@ mod agent;
 mod client;
 mod config;
 mod metrics;
+mod state;
 
 use clap::{Arg, Command};
 use std::path::PathBuf;

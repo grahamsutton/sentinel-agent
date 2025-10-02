@@ -10,7 +10,6 @@ pub struct Config {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct AgentConfig {
-    pub id: String,
     pub hostname: Option<String>,
 }
 
@@ -58,12 +57,6 @@ impl Config {
     }
 
     fn validate(&self) -> Result<(), ConfigError> {
-        if self.agent.id.is_empty() {
-            return Err(ConfigError::Validation(
-                "Agent ID cannot be empty".to_string(),
-            ));
-        }
-
         if self.api.endpoint.is_empty() {
             return Err(ConfigError::Validation(
                 "API endpoint cannot be empty".to_string(),
@@ -125,7 +118,6 @@ mod tests {
     fn create_valid_config_yaml() -> String {
         r#"
 agent:
-  id: "test-agent"
   hostname: "test-host"
 api:
   endpoint: "https://api.example.com"
@@ -143,18 +135,17 @@ collection:
     fn test_load_valid_config_from_str() {
         let yaml = create_valid_config_yaml();
         let config = Config::load_from_str(&yaml).unwrap();
-        assert_eq!(config.agent.id, "test-agent");
         assert_eq!(config.agent.hostname, Some("test-host".to_string()));
         assert_eq!(config.api.endpoint, "https://api.example.com");
     }
 
     #[test]
-    fn test_config_validation_empty_agent_id() {
+    fn test_config_validation_empty_endpoint() {
         let yaml = r#"
 agent:
-  id: ""
+  hostname: "test-host"
 api:
-  endpoint: "https://api.example.com"
+  endpoint: ""
 collection:
   interval_seconds: 60
   disk:

@@ -1,9 +1,10 @@
 use std::collections::VecDeque;
 use tokio::time::{Duration, interval};
 
-use crate::client::{ApiClient, ApiError, ServerRegistration};
+use crate::client::{ApiClient, ApiError, ResourceRegistration};
 use crate::config::Config;
 use crate::metrics::{DiskMetric, MetricService};
+use crate::state::ResourceState;
 
 pub struct SentinelAgent {
     config: Config,
@@ -11,6 +12,7 @@ pub struct SentinelAgent {
     api_client: ApiClient,
     metric_service: MetricService,
     buffer: VecDeque<DiskMetric>,
+    resource_id: Option<String>,
 }
 
 impl SentinelAgent {
@@ -26,6 +28,7 @@ impl SentinelAgent {
             api_client,
             metric_service,
             buffer: VecDeque::new(),
+            resource_id: None,
         })
     }
 
@@ -43,10 +46,14 @@ impl SentinelAgent {
             return Ok(());
         }
 
+        // Ensure we have a resource_id before sending metrics
+        let resource_id = self.resource_id.as_ref()
+            .ok_or_else(|| AgentError::Configuration("Resource not registered".to_string()))?;
+
         let metrics: Vec<DiskMetric> = self.buffer.drain(..).collect();
         let batch =
             self.metric_service
-                .create_batch(metrics, &self.config.agent.id, &self.hostname);
+                .create_batch(metrics, resource_id, &self.hostname);
 
         self.api_client
             .send_metrics(&batch)
@@ -62,35 +69,66 @@ impl SentinelAgent {
             .map_err(|e| AgentError::MetricCollection(e.to_string()))
     }
 
-    async fn register_server(&self) -> Result<(), AgentError> {
+    async fn register_resource(&mut self) -> Result<(), AgentError> {
         // Only register if API key is configured (indicating Operion platform integration)
         if self.config.api.api_key.is_none() {
-            println!("API key not configured, skipping server registration");
+            println!("API key not configured, skipping resource registration");
             return Ok(());
         }
 
-        println!("Registering server with Operion platform...");
+        // Check if we already have a resource state
+        match ResourceState::load() {
+            Ok(Some(state)) => {
+                println!("✅ Found existing resource registration");
+                println!("   Resource ID: {}", state.resource_id);
+                println!("   Registered at: {}", state.registered_at);
+                self.resource_id = Some(state.resource_id);
+                return Ok(());
+            }
+            Ok(None) => {
+                println!("📝 No existing registration found, registering new resource...");
+            }
+            Err(e) => {
+                eprintln!("⚠️  Error loading resource state: {}", e);
+                eprintln!("   Will attempt to register new resource");
+            }
+        }
 
-        let registration = ServerRegistration {
-            agent_id: self.config.agent.id.clone(),
+        // Perform new registration
+        let registration = ResourceRegistration {
             hostname: self.hostname.clone(),
             agent_version: env!("CARGO_PKG_VERSION").to_string(),
             platform: std::env::consts::OS.to_string(),
             arch: std::env::consts::ARCH.to_string(),
         };
 
-        match self.api_client.register_server(&registration).await {
+        match self.api_client.register_resource(&registration).await {
             Ok(response) => {
-                println!("✅ Server registered successfully");
-                println!("   Server ID: {}", response.server_id);
+                println!("✅ Resource registered successfully");
+                println!("   Resource ID: {}", response.resource_id);
                 println!("   Status: {}", response.status);
                 if let Some(message) = response.message {
                     println!("   Message: {}", message);
                 }
+
+                // Save the resource state
+                let state = ResourceState::new(
+                    response.resource_id.clone(),
+                    env!("CARGO_PKG_VERSION").to_string(),
+                );
+
+                if let Err(e) = state.save() {
+                    eprintln!("⚠️  Failed to save resource state: {}", e);
+                    eprintln!("   Resource will be re-registered on next restart");
+                } else {
+                    println!("💾 Resource state saved to: {}", ResourceState::get_state_file_path().display());
+                }
+
+                self.resource_id = Some(response.resource_id);
                 Ok(())
             }
             Err(e) => {
-                eprintln!("⚠️  Server registration failed: {}", e);
+                eprintln!("⚠️  Resource registration failed: {}", e);
                 eprintln!("   Agent will continue without registration");
                 // Don't fail startup if registration fails - just log and continue
                 Ok(())
@@ -100,7 +138,7 @@ impl SentinelAgent {
 
     pub async fn run(&mut self) -> Result<(), AgentError> {
         println!("Starting Operion Sentinel Agent...");
-        println!("Agent ID: {}", self.config.agent.id);
+        println!("Hostname: {}", self.hostname);
         println!("API Endpoint: {}", self.api_client.endpoint());
         println!(
             "Collection interval: {} seconds",
@@ -111,8 +149,8 @@ impl SentinelAgent {
             self.config.get_flush_interval_seconds()
         );
 
-        // Register server with Operion platform
-        self.register_server().await?;
+        // Register resource with Operion platform
+        self.register_resource().await?;
 
         let mut collection_timer =
             interval(Duration::from_secs(self.config.collection.interval_seconds));
@@ -156,6 +194,8 @@ impl SentinelAgent {
 pub enum AgentError {
     #[error("Agent initialization failed: {0}")]
     Initialization(String),
+    #[error("Configuration error: {0}")]
+    Configuration(String),
     #[error("API error: {0}")]
     Api(#[from] ApiError),
     #[error("Metric collection error: {0}")]

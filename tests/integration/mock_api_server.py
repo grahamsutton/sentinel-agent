@@ -38,9 +38,9 @@ def health_check():
         'uptime_seconds': time.time() - server_stats['start_time']
     })
 
-@app.route('/api/v1/servers', methods=['POST'])
-def register_server():
-    """Register a new server/agent"""
+@app.route('/api/v1/resources', methods=['POST'])
+def register_resource():
+    """Register a new resource"""
     try:
         registration = request.get_json()
 
@@ -48,21 +48,25 @@ def register_server():
             return jsonify({'error': 'No JSON payload'}), 400
 
         # Validate required fields
-        required_fields = ['agent_id', 'hostname', 'agent_version', 'platform', 'arch']
+        required_fields = ['hostname', 'agent_version', 'platform', 'arch']
         for field in required_fields:
             if field not in registration:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
 
-        logger.info(f"Server registration: {registration['agent_id']} ({registration['hostname']})")
+        logger.info(f"Resource registration: {registration['hostname']} (version: {registration['agent_version']})")
+
+        # Generate a resource ID
+        import uuid
+        resource_id = f"res_{uuid.uuid4().hex[:12]}"
 
         return jsonify({
-            'server_id': f"srv_{registration['agent_id']}",
+            'resource_id': resource_id,
             'status': 'registered',
-            'message': 'Server registered successfully'
+            'message': 'Resource registered successfully'
         }), 201
 
     except Exception as e:
-        logger.error(f"Error processing server registration: {e}")
+        logger.error(f"Error processing resource registration: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/v1/metrics', methods=['POST'])

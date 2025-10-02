@@ -17,7 +17,7 @@ pub struct DiskMetric {
 
 #[derive(Serialize, Debug)]
 pub struct MetricBatch {
-    pub server_id: String,
+    pub resource_id: String,
     pub hostname: String,
     pub timestamp: u64,
     pub metrics: Vec<DiskMetric>,
@@ -145,7 +145,7 @@ impl MetricService {
     pub fn create_batch(
         &self,
         metrics: Vec<DiskMetric>,
-        server_id: &str,
+        resource_id: &str,
         hostname: &str,
     ) -> MetricBatch {
         let timestamp = SystemTime::now()
@@ -154,7 +154,7 @@ impl MetricService {
             .as_secs();
 
         MetricBatch {
-            server_id: server_id.to_string(),
+            resource_id: resource_id.to_string(),
             hostname: hostname.to_string(),
             timestamp,
             metrics,
@@ -244,7 +244,7 @@ collection:
         let service = MetricService::new(&config);
         let batch = service.create_batch(vec![metric], "test-id", "test-host");
 
-        assert_eq!(batch.server_id, "test-id");
+        assert_eq!(batch.resource_id, "test-id");
         assert_eq!(batch.hostname, "test-host");
         assert_eq!(batch.metrics.len(), 1);
     }
