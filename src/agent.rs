@@ -3,6 +3,7 @@ use tokio::time::{Duration, interval};
 
 use crate::client::{ApiClient, ApiError, ResourceRegistration};
 use crate::config::Config;
+use crate::metadata::{InstanceMetadata, SessionInfo};
 use crate::metrics::{DiskMetric, MetricService};
 use crate::state::ResourceState;
 
@@ -13,6 +14,7 @@ pub struct SentinelAgent {
     metric_service: MetricService,
     buffer: VecDeque<DiskMetric>,
     resource_id: Option<String>,
+    session: SessionInfo,
 }
 
 impl SentinelAgent {
@@ -22,6 +24,8 @@ impl SentinelAgent {
             ApiClient::new(&config).map_err(|e| AgentError::Initialization(e.to_string()))?;
         let metric_service = MetricService::new(&config);
 
+        let session = SessionInfo::generate();
+
         Ok(Self {
             config,
             hostname,
@@ -29,6 +33,7 @@ impl SentinelAgent {
             metric_service,
             buffer: VecDeque::new(),
             resource_id: None,
+            session,
         })
     }
 
@@ -51,9 +56,13 @@ impl SentinelAgent {
             .ok_or_else(|| AgentError::Configuration("Resource not registered".to_string()))?;
 
         let metrics: Vec<DiskMetric> = self.buffer.drain(..).collect();
-        let batch =
-            self.metric_service
-                .create_batch(metrics, resource_id, &self.hostname);
+        let current_session = SessionInfo::generate();
+        let batch = self.metric_service.create_batch(
+            metrics,
+            resource_id,
+            &self.hostname,
+            current_session,
+        );
 
         self.api_client
             .send_metrics(&batch)
@@ -94,12 +103,26 @@ impl SentinelAgent {
             }
         }
 
+        // Detect cloud metadata
+        println!("🔍 Detecting cloud environment...");
+        let instance_metadata = InstanceMetadata::detect().await;
+
+        if let Some(ref provider) = instance_metadata.cloud_provider {
+            println!("☁️  Detected cloud provider: {:?}", provider);
+            if let Some(ref instance_id) = instance_metadata.instance_id {
+                println!("🆔 Instance ID: {}", instance_id);
+            }
+        } else {
+            println!("💻 Running on-premises or in unrecognized environment");
+        }
+
         // Perform new registration
         let registration = ResourceRegistration {
             hostname: self.hostname.clone(),
             agent_version: env!("CARGO_PKG_VERSION").to_string(),
             platform: std::env::consts::OS.to_string(),
             arch: std::env::consts::ARCH.to_string(),
+            instance_metadata: instance_metadata.clone(),
         };
 
         match self.api_client.register_resource(&registration).await {
@@ -115,6 +138,8 @@ impl SentinelAgent {
                 let state = ResourceState::new(
                     response.resource_id.clone(),
                     env!("CARGO_PKG_VERSION").to_string(),
+                    instance_metadata,
+                    self.session.clone(),
                 );
 
                 if let Err(e) = state.save() {

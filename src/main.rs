@@ -1,6 +1,7 @@
 mod agent;
 mod client;
 mod config;
+mod metadata;
 mod metrics;
 mod state;
 

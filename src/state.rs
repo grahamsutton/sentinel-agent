@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::PathBuf;
 // Time utilities provided by chrono
 use chrono::{DateTime, Utc};
+use crate::metadata::{InstanceMetadata, SessionInfo};
 
 /// Represents the persisted state of a registered resource
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,16 +15,27 @@ pub struct ResourceState {
     pub registered_at: String,
     /// The agent version that performed the registration
     pub agent_version: String,
+    /// Cloud instance metadata from registration
+    pub instance_metadata: InstanceMetadata,
+    /// Session info from when the agent started
+    pub session: SessionInfo,
 }
 
 impl ResourceState {
     /// Create a new ResourceState
-    pub fn new(resource_id: String, agent_version: String) -> Self {
+    pub fn new(
+        resource_id: String,
+        agent_version: String,
+        instance_metadata: InstanceMetadata,
+        session: SessionInfo,
+    ) -> Self {
         let now: DateTime<Utc> = Utc::now();
         Self {
             resource_id,
             registered_at: now.to_rfc3339(),
             agent_version,
+            instance_metadata,
+            session,
         }
     }
 
@@ -165,9 +177,19 @@ mod tests {
 
     #[test]
     fn test_resource_state_creation() {
+        let instance_metadata = InstanceMetadata {
+            instance_id: None,
+            cloud_provider: None,
+            region: None,
+            instance_type: None,
+        };
+        let session = SessionInfo::generate();
+
         let state = ResourceState::new(
             "res_123456".to_string(),
             "0.2.1".to_string(),
+            instance_metadata,
+            session,
         );
 
         assert_eq!(state.resource_id, "res_123456");
@@ -177,9 +199,19 @@ mod tests {
 
     #[test]
     fn test_state_serialization() {
+        let instance_metadata = InstanceMetadata {
+            instance_id: None,
+            cloud_provider: None,
+            region: None,
+            instance_type: None,
+        };
+        let session = SessionInfo::generate();
+
         let state = ResourceState::new(
             "res_abc123".to_string(),
             "0.2.1".to_string(),
+            instance_metadata,
+            session,
         );
 
         let json = serde_json::to_string(&state).unwrap();
@@ -201,10 +233,20 @@ mod tests {
         // Override the state file path for testing
         env::set_var("HOME", temp_dir.path());
 
+        let instance_metadata = InstanceMetadata {
+            instance_id: None,
+            cloud_provider: None,
+            region: None,
+            instance_type: None,
+        };
+        let session = SessionInfo::generate();
+
         let state = ResourceState {
             resource_id: "res_test123".to_string(),
             registered_at: "2024-01-15T10:30:00Z".to_string(),
             agent_version: "0.2.1".to_string(),
+            instance_metadata,
+            session,
         };
 
         // Test saving

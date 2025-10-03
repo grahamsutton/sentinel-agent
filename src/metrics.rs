@@ -3,6 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use sysinfo::Disks;
 
 use crate::config::{Config, DiskConfig};
+use crate::metadata::SessionInfo;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DiskMetric {
@@ -21,6 +22,7 @@ pub struct MetricBatch {
     pub hostname: String,
     pub timestamp: u64,
     pub metrics: Vec<DiskMetric>,
+    pub session: SessionInfo,
 }
 
 pub trait MetricCollector {
@@ -147,6 +149,7 @@ impl MetricService {
         metrics: Vec<DiskMetric>,
         resource_id: &str,
         hostname: &str,
+        session: SessionInfo,
     ) -> MetricBatch {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -158,6 +161,7 @@ impl MetricService {
             hostname: hostname.to_string(),
             timestamp,
             metrics,
+            session,
         }
     }
 }
@@ -242,7 +246,8 @@ collection:
 "#).unwrap();
 
         let service = MetricService::new(&config);
-        let batch = service.create_batch(vec![metric], "test-id", "test-host");
+        let session = crate::metadata::SessionInfo::generate();
+        let batch = service.create_batch(vec![metric], "test-id", "test-host", session);
 
         assert_eq!(batch.resource_id, "test-id");
         assert_eq!(batch.hostname, "test-host");

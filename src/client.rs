@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 use crate::config::Config;
+use crate::metadata::InstanceMetadata;
 use crate::metrics::MetricBatch;
 
 #[derive(Debug, Serialize)]
@@ -11,6 +12,7 @@ pub struct ResourceRegistration {
     pub agent_version: String,
     pub platform: String,
     pub arch: String,
+    pub instance_metadata: InstanceMetadata,
 }
 
 #[derive(Debug, Deserialize)]
@@ -201,7 +203,8 @@ collection:
             usage_percentage: 50.0,
         };
 
-        let batch = service.create_batch(vec![metric], "test-agent", "test-host");
+        let session = crate::metadata::SessionInfo::generate();
+        let batch = service.create_batch(vec![metric], "test-agent", "test-host", session);
         let result = client.send_metrics(&batch).await;
         
         assert!(result.is_ok());
@@ -231,7 +234,8 @@ collection:
             usage_percentage: 50.0,
         };
 
-        let batch = service.create_batch(vec![metric], "test-agent", "test-host");
+        let session = crate::metadata::SessionInfo::generate();
+        let batch = service.create_batch(vec![metric], "test-agent", "test-host", session);
         let result = client.send_metrics(&batch).await;
         
         assert!(result.is_err());
@@ -260,7 +264,8 @@ collection:
             usage_percentage: 50.0,
         };
 
-        let batch = service.create_batch(vec![metric], "test-agent", "test-host");
+        let session = crate::metadata::SessionInfo::generate();
+        let batch = service.create_batch(vec![metric], "test-agent", "test-host", session);
         let result = client.send_metrics(&batch).await;
         
         assert!(result.is_err());
@@ -287,11 +292,19 @@ collection:
 
         let client = ApiClient::new(&config).unwrap();
         
+        let instance_metadata = crate::metadata::InstanceMetadata {
+            instance_id: None,
+            cloud_provider: None,
+            region: None,
+            instance_type: None,
+        };
+
         let registration = ResourceRegistration {
             hostname: "test-host".to_string(),
             agent_version: "0.1.0".to_string(),
             platform: "linux".to_string(),
             arch: "x86_64".to_string(),
+            instance_metadata,
         };
 
         let result = client.register_resource(&registration).await;
@@ -319,11 +332,19 @@ collection:
 
         let client = ApiClient::new(&config).unwrap();
         
+        let instance_metadata = crate::metadata::InstanceMetadata {
+            instance_id: None,
+            cloud_provider: None,
+            region: None,
+            instance_type: None,
+        };
+
         let registration = ResourceRegistration {
             hostname: "test-host".to_string(),
             agent_version: "0.1.0".to_string(),
             platform: "linux".to_string(),
             arch: "x86_64".to_string(),
+            instance_metadata,
         };
 
         let result = client.register_resource(&registration).await;
