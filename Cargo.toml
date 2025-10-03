@@ -1,6 +1,6 @@
 [package]
 name = "sentinel-agent"
-version = "0.1.0"
+version = "0.3.1"
 edition = "2021"
 description = "Operion Sentinel monitoring agent for system metrics"
 license = "Apache-2.0"
