@@ -182,7 +182,7 @@ The agent sends metrics via HTTP POST to `/api/v1/metrics` with the following JS
 
 ```json
 {
-  "server_id": "web-server-01",
+  "resource_id": "res_abc123def456",
   "hostname": "web01.example.com", 
   "timestamp": 1640995200,
   "metrics": [

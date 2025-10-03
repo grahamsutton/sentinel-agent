@@ -277,27 +277,6 @@ impl SessionInfo {
         }
     }
 
-    /// Check if this session is consistent with a previous one
-    pub fn is_consistent_with(&self, previous: &SessionInfo, elapsed_seconds: u64) -> bool {
-        // Boot time should never change for the same instance
-        if self.boot_time != previous.boot_time {
-            return false;
-        }
-
-        // Agent start time should remain the same for the same agent process
-        if self.agent_start_time != previous.agent_start_time {
-            // Different agent process, but same boot = agent restart (acceptable)
-            return true;
-        }
-
-        // Uptime should increase by approximately elapsed time
-        // Allow 10% tolerance for clock drift and measurement delays
-        let expected_uptime = previous.uptime_seconds + elapsed_seconds;
-        let uptime_diff = (self.uptime_seconds as i64 - expected_uptime as i64).abs();
-        let tolerance = (elapsed_seconds as f64 * 0.1) as i64 + 5; // 10% or minimum 5 seconds
-
-        uptime_diff <= tolerance
-    }
 }
 
 #[cfg(test)]
@@ -314,38 +293,6 @@ mod tests {
         assert!(session.agent_start_time >= session.boot_time);
     }
 
-    #[test]
-    fn test_session_consistency() {
-        let session1 = SessionInfo {
-            boot_time: 1700000000,
-            agent_start_time: 1700001000,
-            uptime_seconds: 1000,
-        };
-
-        // Same boot time, agent time, uptime increased = consistent
-        let session2 = SessionInfo {
-            boot_time: 1700000000,
-            agent_start_time: 1700001000,
-            uptime_seconds: 1060,
-        };
-        assert!(session2.is_consistent_with(&session1, 60));
-
-        // Different boot time = inconsistent (different machine or reboot)
-        let session3 = SessionInfo {
-            boot_time: 1700002000,
-            agent_start_time: 1700003000,
-            uptime_seconds: 100,
-        };
-        assert!(!session3.is_consistent_with(&session1, 60));
-
-        // Same boot, different agent start = agent restart (acceptable)
-        let session4 = SessionInfo {
-            boot_time: 1700000000,
-            agent_start_time: 1700002000, // Agent restarted
-            uptime_seconds: 2000,
-        };
-        assert!(session4.is_consistent_with(&session1, 1000));
-    }
 
     #[tokio::test]
     async fn test_instance_metadata_detection() {
