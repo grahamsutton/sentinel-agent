@@ -129,7 +129,10 @@ if [ "$EUID" -eq 0 ]; then
     
     # Create config directory
     mkdir -p "$CONFIG_DIR"
-    
+
+    # Create state directory for resource-state.json
+    mkdir -p "/var/lib/operion"
+
     # Create systemd service
     cat > "${SERVICE_DIR}/operion-agent.service" << EOF
 [Unit]
@@ -157,6 +160,10 @@ EOF
         useradd --system --no-create-home --shell /bin/false operion
         echo "👤 Created 'operion' system user"
     fi
+
+    # Set ownership of state directory so operion user can write resource-state.json
+    chown -R operion:operion "/var/lib/operion"
+    chmod 755 "/var/lib/operion"
 
     # Create YAML config file template
     cat > "${CONFIG_DIR}/agent.yaml" << EOF

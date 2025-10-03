@@ -40,49 +40,124 @@ impl ResourceState {
     }
 
     /// Get the path to the state file based on runtime context
+    ///
+    /// Priority order:
+    /// 1. /var/lib/operion (preferred for system services - writable by service user)
+    /// 2. /etc/operion (legacy system-wide location)
+    /// 3. ~/.config/operion (user installation fallback)
     pub fn get_state_file_path() -> PathBuf {
-        // Check if running as root/system service
-        if std::env::var("USER").unwrap_or_default() == "root" ||
-           std::env::var("SUDO_USER").is_ok() ||
-           std::fs::metadata("/etc/operion").is_ok() {
-            // System-wide installation
-            PathBuf::from("/etc/operion/resource-state.json")
-        } else {
-            // User installation
-            let config_dir = dirs::config_dir()
-                .unwrap_or_else(|| PathBuf::from("."))
-                .join("operion");
-            config_dir.join("resource-state.json")
+        // Try /var/lib/operion first (best practice for system service state)
+        let var_lib_path = PathBuf::from("/var/lib/operion/resource-state.json");
+        if let Some(parent) = var_lib_path.parent() {
+            if parent.exists() || Self::can_create_directory(parent) {
+                return var_lib_path;
+            }
         }
+
+        // Try /etc/operion (legacy location)
+        let etc_path = PathBuf::from("/etc/operion/resource-state.json");
+        if let Some(parent) = etc_path.parent() {
+            if parent.exists() || Self::can_create_directory(parent) {
+                return etc_path;
+            }
+        }
+
+        // Fallback to user config directory
+        let config_dir = dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("operion");
+        config_dir.join("resource-state.json")
+    }
+
+    /// Check if we can create a directory (by attempting to create it)
+    fn can_create_directory(path: &std::path::Path) -> bool {
+        // If parent doesn't exist, we can't create it
+        if let Some(parent) = path.parent() {
+            if !parent.exists() {
+                return false;
+            }
+        }
+
+        // Try to create the directory
+        fs::create_dir_all(path).is_ok()
     }
 
     /// Load state from the JSON file
+    ///
+    /// Searches for the state file in multiple locations in priority order
     pub fn load() -> Result<Option<Self>, StateError> {
-        let path = Self::get_state_file_path();
+        // Try loading from different locations in priority order
+        let paths_to_try = vec![
+            PathBuf::from("/var/lib/operion/resource-state.json"),
+            PathBuf::from("/etc/operion/resource-state.json"),
+            {
+                let config_dir = dirs::config_dir()
+                    .unwrap_or_else(|| PathBuf::from("."))
+                    .join("operion");
+                config_dir.join("resource-state.json")
+            },
+        ];
 
-        if !path.exists() {
-            return Ok(None);
+        for path in paths_to_try {
+            if !path.exists() {
+                continue;
+            }
+
+            let contents = fs::read_to_string(&path)
+                .map_err(|e| StateError::ReadError {
+                    path: path.to_string_lossy().to_string(),
+                    error: e.to_string(),
+                })?;
+
+            let state: ResourceState = serde_json::from_str(&contents)
+                .map_err(|e| StateError::ParseError {
+                    path: path.to_string_lossy().to_string(),
+                    error: e.to_string(),
+                })?;
+
+            return Ok(Some(state));
         }
 
-        let contents = fs::read_to_string(&path)
-            .map_err(|e| StateError::ReadError {
-                path: path.to_string_lossy().to_string(),
-                error: e.to_string(),
-            })?;
-
-        let state: ResourceState = serde_json::from_str(&contents)
-            .map_err(|e| StateError::ParseError {
-                path: path.to_string_lossy().to_string(),
-                error: e.to_string(),
-            })?;
-
-        Ok(Some(state))
+        // No state file found in any location
+        Ok(None)
     }
 
     /// Save state to the JSON file
     pub fn save(&self) -> Result<(), StateError> {
-        let path = Self::get_state_file_path();
+        // Serialize to pretty JSON once
+        let json = serde_json::to_string_pretty(self)
+            .map_err(|e| StateError::SerializeError(e.to_string()))?;
 
+        // Try saving to different locations in priority order
+        let paths_to_try = vec![
+            PathBuf::from("/var/lib/operion/resource-state.json"),
+            PathBuf::from("/etc/operion/resource-state.json"),
+            {
+                let config_dir = dirs::config_dir()
+                    .unwrap_or_else(|| PathBuf::from("."))
+                    .join("operion");
+                config_dir.join("resource-state.json")
+            },
+        ];
+
+        let mut last_error = None;
+
+        for path in paths_to_try {
+            match Self::try_save_to_path(&path, &json) {
+                Ok(()) => return Ok(()),
+                Err(e) => last_error = Some(e),
+            }
+        }
+
+        // If all attempts failed, return the last error
+        Err(last_error.unwrap_or_else(|| StateError::WriteError {
+            path: "unknown".to_string(),
+            error: "No writable location found".to_string(),
+        }))
+    }
+
+    /// Attempt to save state to a specific path
+    fn try_save_to_path(path: &PathBuf, json: &str) -> Result<(), StateError> {
         // Ensure the directory exists
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)
@@ -91,10 +166,6 @@ impl ResourceState {
                     error: e.to_string(),
                 })?;
         }
-
-        // Serialize to pretty JSON
-        let json = serde_json::to_string_pretty(self)
-            .map_err(|e| StateError::SerializeError(e.to_string()))?;
 
         // Write to a temporary file first (atomic write)
         let temp_path = path.with_extension("tmp");
