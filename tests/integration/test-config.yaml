@@ -1,5 +1,4 @@
 agent:
-  id: "integration-test-agent"
   hostname: "test-container"
 
 api:

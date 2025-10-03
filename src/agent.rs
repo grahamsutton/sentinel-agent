@@ -51,15 +51,24 @@ impl SentinelAgent {
             return Ok(());
         }
 
-        // Ensure we have a resource_id before sending metrics
-        let resource_id = self.resource_id.as_ref()
-            .ok_or_else(|| AgentError::Configuration("Resource not registered".to_string()))?;
+        // Use resource_id if available, or fall back to test ID when no API key
+        let resource_id = match &self.resource_id {
+            Some(id) => id.clone(),
+            None => {
+                if self.config.api.api_key.is_none() {
+                    // In test/development mode without API key, use test resource ID
+                    "test-resource-id".to_string()
+                } else {
+                    return Err(AgentError::Configuration("Resource not registered".to_string()));
+                }
+            }
+        };
 
         let metrics: Vec<DiskMetric> = self.buffer.drain(..).collect();
         let current_session = SessionInfo::generate();
         let batch = self.metric_service.create_batch(
             metrics,
-            resource_id,
+            &resource_id,
             &self.hostname,
             current_session,
         );
